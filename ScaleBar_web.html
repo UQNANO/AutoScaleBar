@@ -1,0 +1,2483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEM Scale Bar Tool</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f6f8;
+    --bg-tertiary: #ebedf0;
+    --bg-panel: #f9fafb;
+    --border: #d5dae0;
+    --border-focus: #3a7bfd;
+    --text-primary: #1a1f26;
+    --text-secondary: #5a6672;
+    --text-muted: #8b95a1;
+    --accent: #3a7bfd;
+    --accent-hover: #2563eb;
+    --accent-dim: #e8effd;
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-logo {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 14px;
+    color: #fff;
+  }
+  .header-title {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+  }
+  .header-title span { color: var(--text-muted); font-weight: 400; }
+  .header-actions { display: flex; gap: 10px; }
+
+  /* ── Buttons ── */
+  .btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-success { background: var(--success); border-color: var(--success); color: #fff; }
+  .btn-success:hover { background: #27ae60; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Layout ── */
+  .app-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    height: calc(100vh - 53px);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-section:last-child { border-bottom: none; }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .section-label::before {
+    content: '';
+    width: 3px;
+    height: 10px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* ── Form controls ── */
+  .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 12px;
+  }
+  .form-row:last-child { margin-bottom: 0; }
+  .form-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  .form-input, .form-select {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 7px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); }
+  .form-select { cursor: pointer; }
+  .form-row-inline {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  /* color picker row */
+  .color-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .color-swatch {
+    width: 30px; height: 30px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    padding: 0;
+    overflow: hidden;
+  }
+  .color-swatch input[type="color"] {
+    width: 42px; height: 42px;
+    border: none;
+    cursor: pointer;
+    transform: translate(-6px, -6px);
+  }
+  .color-presets {
+    display: flex;
+    gap: 4px;
+  }
+  .color-preset {
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+  }
+  .color-preset:hover { transform: scale(1.15); }
+  .color-preset.active { border-color: var(--accent); }
+
+  /* ── Thumbnail strip ── */
+  .thumb-strip {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .thumb-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s;
+    border: 1.5px solid transparent;
+  }
+  .thumb-item:hover { background: var(--bg-tertiary); }
+  .thumb-item.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+  }
+  .thumb-img {
+    width: 48px; height: 36px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .thumb-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .thumb-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary);
+  }
+  .thumb-dim {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+  .thumb-remove {
+    width: 20px; height: 20px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .thumb-remove:hover { color: var(--danger); background: rgba(231,76,60,.15); }
+
+  /* ── Pixel size status ── */
+  .pixel-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 5px;
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+  .pixel-status.auto { background: rgba(22,163,74,.1); color: var(--success); }
+  .pixel-status.manual { background: rgba(217,119,6,.1); color: var(--warning); }
+  .pixel-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .pixel-status.auto .pixel-dot { background: var(--success); }
+  .pixel-status.manual .pixel-dot { background: var(--warning); }
+
+  /* ── Main canvas area ── */
+  .main-area {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #e2e5ea;
+    position: relative;
+  }
+
+  /* Drop zone (initial empty state) */
+  .drop-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    border: 2px dashed var(--border);
+    margin: 24px;
+    border-radius: 12px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(58,123,253,.08);
+  }
+  .drop-zone.hidden { display: none; }
+  .drop-icon {
+    width: 64px; height: 64px;
+    border-radius: 16px;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .drop-icon svg { width: 32px; height: 32px; stroke: var(--text-muted); }
+  .drop-text {
+    font-size: 15px;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.6;
+  }
+  .drop-text strong { color: var(--accent); }
+  .drop-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+
+  /* Full-page drag overlay (appears when dragging files over window) */
+  .drag-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(58,123,253,.08);
+    backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .drag-overlay.visible {
+    display: flex;
+    pointer-events: all;
+  }
+  .drag-overlay-box {
+    background: var(--bg-primary);
+    border: 3px dashed var(--accent);
+    border-radius: 20px;
+    padding: 48px 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.15);
+    animation: dragPulse 1.2s ease-in-out infinite alternate;
+  }
+  @keyframes dragPulse {
+    from { border-color: var(--accent); }
+    to { border-color: var(--accent-hover); box-shadow: 0 20px 60px rgba(58,123,253,.2); }
+  }
+  .drag-overlay-box svg {
+    width: 48px; height: 48px;
+    stroke: var(--accent);
+  }
+  .drag-overlay-box .drag-label {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .drag-overlay-box .drag-sub {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Canvas wrapper */
+  .canvas-wrapper {
+    flex: 1;
+    display: none;
+    position: relative;
+    overflow: hidden;
+  }
+  .canvas-wrapper.visible { display: flex; align-items: center; justify-content: center; }
+  .canvas-container {
+    position: relative;
+    display: inline-block;
+    max-width: 95%;
+    max-height: 95%;
+  }
+  .canvas-container canvas {
+    display: block;
+    max-width: 100%;
+    max-height: calc(100vh - 120px);
+    object-fit: contain;
+  }
+
+  /* Scale bar overlay (drag handle) */
+  .scalebar-overlay {
+    position: absolute;
+    cursor: grab;
+    z-index: 10;
+    user-select: none;
+  }
+  .scalebar-overlay:active { cursor: grabbing; }
+  .scalebar-overlay .sb-line {
+    height: var(--sb-thickness, 4px);
+    min-width: 20px;
+  }
+  .scalebar-overlay .sb-text {
+    text-align: center;
+    white-space: nowrap;
+    font-weight: 600;
+    margin-top: 2px;
+    pointer-events: none;
+  }
+  .scalebar-overlay .sb-bg {
+    padding: 6px 10px;
+    border-radius: 4px;
+  }
+
+  /* ── Bottom bar ── */
+  .bottom-bar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .bottom-bar.visible { display: flex; }
+
+  /* ── SSC Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .modal h3 {
+    font-family: var(--mono);
+    font-size: 14px;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+  }
+  .modal-ssc-content {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* ── Checkbox ── */
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .checkbox-row input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 14px; height: 14px;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c0c6ce; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9aa3ae; }
+
+  /* ── Scale length quick picks ── */
+  .quick-picks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .quick-pick {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .quick-pick:hover, .quick-pick.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-primary);
+    z-index: 1000;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ── Batch progress ── */
+  .batch-bar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: var(--accent-dim);
+    border-bottom: 1px solid var(--accent);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .batch-bar.visible { display: flex; }
+  .batch-progress {
+    flex: 1;
+    height: 4px;
+    background: var(--bg-primary);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .batch-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+
+  /* ── Apply-all checkbox ── */
+  .apply-all-row {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">SB</div>
+    <div class="header-title">SEM ScaleBar <span>// v1.0</span></div>
+  </div>
+  <div class="header-actions">
+    <button class="btn" id="btnAddFiles" title="Add images">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      Add Files
+    </button>
+    <button class="btn" id="btnLoadSSC" title="Load .ssc file for pixel size">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Load .ssc
+    </button>
+    <button class="btn" id="btnSaveCurrent" disabled title="Save current image">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Save Current
+    </button>
+    <button class="btn btn-success" id="btnBatchSave" disabled title="Pick a folder and save all images into it">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg>
+      Save All to Folder
+    </button>
+  </div>
+</div>
+
+<!-- Batch progress -->
+<div class="batch-bar" id="batchBar">
+  <span id="batchLabel">Saving...</span>
+  <div class="batch-progress"><div class="batch-progress-fill" id="batchFill"></div></div>
+  <span id="batchCount">0/0</span>
+</div>
+
+<div class="app-layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Images list -->
+    <div class="sidebar-section">
+      <div class="section-label">Images</div>
+      <div class="thumb-strip" id="thumbStrip">
+        <div style="text-align:center;padding:20px 0;color:var(--text-muted);font-size:12px;">
+          No images loaded
+        </div>
+      </div>
+    </div>
+
+    <!-- Pixel size -->
+    <div class="sidebar-section">
+      <div class="section-label">Pixel Size</div>
+      <div id="pixelStatusBox"></div>
+      <div class="form-row">
+        <label class="form-label">nm / pixel</label>
+        <input type="number" class="form-input" id="inputPixelSize" value="1" min="0.001" step="0.001">
+      </div>
+      <div class="form-row" style="margin-top: 4px;">
+        <label class="form-label">Unit</label>
+        <select class="form-select" id="inputUnit">
+          <option value="nm">nm</option>
+          <option value="µm" selected>µm</option>
+          <option value="mm">mm</option>
+        </select>
+      </div>
+      <div class="apply-all-row">
+        <label class="checkbox-row">
+          <input type="checkbox" id="chkApplyPixelAll" checked>
+          Apply pixel size to all images
+        </label>
+      </div>
+    </div>
+
+    <!-- Scale bar length -->
+    <div class="sidebar-section">
+      <div class="section-label">Scale Bar</div>
+      <div class="form-row">
+        <label class="form-label">Desired length (in selected unit)</label>
+        <input type="number" class="form-input" id="inputScaleLen" value="10" min="0.01" step="0.01">
+      </div>
+      <div class="quick-picks" id="quickPicks">
+        <button class="quick-pick" data-val="0.1">0.1</button>
+        <button class="quick-pick" data-val="0.5">0.5</button>
+        <button class="quick-pick" data-val="1">1</button>
+        <button class="quick-pick" data-val="2">2</button>
+        <button class="quick-pick" data-val="5">5</button>
+        <button class="quick-pick" data-val="10" >10</button>
+        <button class="quick-pick" data-val="20">20</button>
+        <button class="quick-pick" data-val="50">50</button>
+        <button class="quick-pick" data-val="100">100</button>
+        <button class="quick-pick" data-val="500">500</button>
+      </div>
+
+      <div class="form-row" style="margin-top: 14px;">
+        <label class="form-label">Bar thickness (px)</label>
+        <input type="number" class="form-input" id="inputThickness" value="6" min="1" max="30">
+      </div>
+    </div>
+
+    <!-- Style -->
+    <div class="sidebar-section">
+      <div class="section-label">Style</div>
+
+      <div class="form-row">
+        <label class="form-label">Bar color</label>
+        <div class="color-row">
+          <div class="color-swatch"><input type="color" id="colorBar" value="#ffffff"></div>
+          <div class="color-presets" id="barPresets">
+            <div class="color-preset active" style="background:#ffffff" data-color="#ffffff"></div>
+            <div class="color-preset" style="background:#000000;border:1px solid #444" data-color="#000000"></div>
+            <div class="color-preset" style="background:#ffff00" data-color="#ffff00"></div>
+            <div class="color-preset" style="background:#00ff00" data-color="#00ff00"></div>
+            <div class="color-preset" style="background:#ff3333" data-color="#ff3333"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Text color</label>
+        <div class="color-row">
+          <div class="color-swatch"><input type="color" id="colorText" value="#ffffff"></div>
+          <div class="color-presets" id="textPresets">
+            <div class="color-preset active" style="background:#ffffff" data-color="#ffffff"></div>
+            <div class="color-preset" style="background:#000000;border:1px solid #444" data-color="#000000"></div>
+            <div class="color-preset" style="background:#ffff00" data-color="#ffff00"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Font size (px on image)</label>
+        <input type="number" class="form-input" id="inputFontSize" value="28" min="8" max="200">
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Font</label>
+        <select class="form-select" id="inputFont">
+          <option value="Arial" selected>Arial</option>
+          <option value="Helvetica">Helvetica</option>
+          <option value="Calibri">Calibri</option>
+          <option value="Times New Roman">Times New Roman</option>
+          <option value="Courier New">Courier New</option>
+          <option value="sans-serif">sans-serif</option>
+          <option value="serif">serif</option>
+        </select>
+      </div>
+
+      <div class="form-row" style="margin-top: 6px;">
+        <label class="checkbox-row">
+          <input type="checkbox" id="chkShowText" checked>
+          Show label text
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label class="checkbox-row">
+          <input type="checkbox" id="chkEndCaps" checked>
+          End caps (serifs)
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Background</label>
+        <select class="form-select" id="inputBg">
+          <option value="none">None</option>
+          <option value="dark" selected>Dark semi-transparent</option>
+          <option value="light">Light semi-transparent</option>
+          <option value="solid-black">Solid black</option>
+          <option value="solid-white">Solid white</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Background padding (px)</label>
+        <input type="number" class="form-input" id="inputBgPad" value="10" min="0" max="60">
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Position snap</label>
+        <select class="form-select" id="inputPosition">
+          <option value="free">Free (drag anywhere)</option>
+          <option value="bottom-right" selected>Bottom-right</option>
+          <option value="bottom-left">Bottom-left</option>
+          <option value="top-right">Top-right</option>
+          <option value="top-left">Top-left</option>
+          <option value="bottom-center">Bottom-center</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Margin from edge (px)</label>
+        <input type="number" class="form-input" id="inputMargin" value="30" min="0" max="200">
+      </div>
+
+    </div>
+
+    <!-- Output -->
+    <div class="sidebar-section">
+      <div class="section-label">Output</div>
+      <div class="form-row">
+        <label class="form-label">Format</label>
+        <select class="form-select" id="outputFormat">
+          <option value="png" selected>PNG (lossless)</option>
+          <option value="jpeg">JPEG</option>
+          <option value="bmp">BMP (uncompressed)</option>
+          <option value="tiff">TIFF (uncompressed)</option>
+          <option value="webp">WebP</option>
+        </select>
+      </div>
+      <div class="form-row" id="qualityRow">
+        <label class="form-label">Quality (JPEG/WebP)</label>
+        <input type="number" class="form-input" id="outputQuality" value="95" min="10" max="100">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Filename suffix</label>
+        <input type="text" class="form-input" id="outputSuffix" value="_scalebar">
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Main area -->
+  <div class="main-area" id="mainArea">
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <div class="drop-text">
+        <strong>Drop SEM images here</strong><br>
+        or click to browse
+      </div>
+      <div class="drop-sub">PNG · JPG · BMP · TIFF · WebP — also accepts .ssc files</div>
+    </div>
+
+    <div class="canvas-wrapper" id="canvasWrapper">
+      <div class="canvas-container" id="canvasContainer">
+        <canvas id="previewCanvas"></canvas>
+        <div class="scalebar-overlay" id="scalebarOverlay">
+          <div class="sb-bg">
+            <div class="sb-line"></div>
+            <div class="sb-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-bar" id="bottomBar">
+      <span id="statusInfo">Ready</span>
+      <span id="statusDims"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file inputs -->
+<input type="file" id="fileInput" accept="image/*,.tif,.tiff,.bmp,.ssc,.png,.jpg,.jpeg,.webp" multiple hidden>
+<input type="file" id="sscInput" accept=".ssc" hidden>
+
+<!-- SSC modal -->
+<div class="modal-overlay" id="sscModal">
+  <div class="modal">
+    <h3>SSC File — Extracted Pixel Size</h3>
+    <div class="modal-ssc-content" id="sscContent"></div>
+    <div class="form-row">
+      <label class="form-label">Detected pixel size (nm/px)</label>
+      <input type="number" class="form-input" id="sscPixelVal" value="1" step="0.001">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="sscCancel">Cancel</button>
+      <button class="btn btn-primary" id="sscApply">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Full-page drag overlay -->
+<div class="drag-overlay" id="dragOverlay">
+  <div class="drag-overlay-box">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    <div class="drag-label">Drop SEM images here</div>
+    <div class="drag-sub">PNG · JPG · BMP · TIFF · WebP · .ssc</div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── State ───
+const state = {
+  images: [],       // { file, img, name, w, h, pixelSize, pixelSource }
+  activeIdx: -1,
+  sscMap: {},       // keyed by normalized basename of image / bitmap / ssc
+  // Global scale bar position as fraction of image (0-1), shared across all images
+  sbFracX: null,    // null = use preset position
+  sbFracY: null,
+};
+
+// ─── DOM refs ───
+const $ = id => document.getElementById(id);
+const dropZone = $('dropZone');
+const canvasWrapper = $('canvasWrapper');
+const canvasContainer = $('canvasContainer');
+const canvas = $('previewCanvas');
+const ctx = canvas.getContext('2d');
+const overlay = $('scalebarOverlay');
+const thumbStrip = $('thumbStrip');
+const bottomBar = $('bottomBar');
+const fileInput = $('fileInput');
+const sscInput = $('sscInput');
+
+// ─── Controls ───
+const ctrl = {
+  get pixelSize()  { return parseFloat($('inputPixelSize').value) || 1; },
+  get unit()       { return $('inputUnit').value; },
+  get scaleLen()   { return parseFloat($('inputScaleLen').value) || 10; },
+  get thickness()  { return parseInt($('inputThickness').value) || 6; },
+  get barColor()   { return $('colorBar').value; },
+  get textColor()  { return $('colorText').value; },
+  get fontSize()   { return parseInt($('inputFontSize').value) || 28; },
+  get font()       { return $('inputFont').value; },
+  get showText()   { return $('chkShowText').checked; },
+  get endCaps()    { return $('chkEndCaps').checked; },
+  get bgStyle()    { return $('inputBg').value; },
+  get bgPad()      { return parseInt($('inputBgPad').value) || 10; },
+  get position()   { return $('inputPosition').value; },
+  get margin()     { return parseInt($('inputMargin').value) || 30; },
+  get format()     { return $('outputFormat').value; },
+  get quality()    { return parseInt($('outputQuality').value) || 95; },
+  get suffix()     { return $('outputSuffix').value || '_scalebar'; },
+  get applyAll()   { return $('chkApplyPixelAll').checked; },
+};
+
+// ─── Helpers ───
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function unitToNm(val, unit) {
+  if (unit === 'nm') return val;
+  if (unit === 'µm') return val * 1000;
+  if (unit === 'mm') return val * 1e6;
+  return val;
+}
+
+function nmToUnit(nm, unit) {
+  if (unit === 'nm') return nm;
+  if (unit === 'µm') return nm / 1000;
+  if (unit === 'mm') return nm / 1e6;
+  return nm;
+}
+
+function formatScaleLabel(len, unit) {
+  // show clean number
+  let v = parseFloat(len.toPrecision(4));
+  return `${v} ${unit}`;
+}
+
+
+function normalizeMicronText(s) {
+  return (s || '')
+    .replace(/µ/g, 'µ')
+    .replace(/μ/g, 'µ')
+    .replace(/�/g, 'µ');
+}
+
+function normalizeBaseName(name) {
+  return (name || '')
+    .replace(/^.*[\/]/, '')
+    .replace(/\.[^.]+$/, '')
+    .trim()
+    .toLowerCase();
+}
+
+function unitTokenToNm(val, unit) {
+  const u = normalizeMicronText((unit || 'nm')).toLowerCase();
+  if (u === 'm') return val * 1e9;
+  if (u === 'mm') return val * 1e6;
+  if (u === 'um' || u === 'µm') return val * 1e3;
+  return val;
+}
+
+// ─── Pixel size from TIFF metadata ───
+function tryExtractPixelSize(arrayBuf) {
+  try {
+    const view = new DataView(arrayBuf);
+    const le = view.getUint16(0) === 0x4949;
+    const g16 = (o) => view.getUint16(o, le);
+    const g32 = (o) => view.getUint32(o, le);
+
+    // Check it's TIFF
+    if (g16(0) !== 0x4949 && g16(0) !== 0x4D4D) return null;
+    if (g16(2) !== 42) return null;
+
+    let ifdOff = g32(4);
+    const nEntries = g16(ifdOff);
+
+    let description = null;
+    let feiMeta = null;
+    let feiMeta2 = null;
+    let xRes = null, resUnit = null;
+
+    for (let i = 0; i < nEntries; i++) {
+      const entryOff = ifdOff + 2 + i * 12;
+      const tag = g16(entryOff);
+      const type = g16(entryOff + 2);
+      const count = g32(entryOff + 4);
+      const valOff = entryOff + 8;
+      const strOff = count > 4 ? g32(valOff) : valOff;
+
+      // ImageDescription (tag 270)
+      if (tag === 270 && type === 2) {
+        try {
+          const bytes = new Uint8Array(arrayBuf, strOff, Math.min(count, 8000));
+          description = new TextDecoder('ascii').decode(bytes);
+        } catch(e) {}
+      }
+
+      // FEI metadata (tag 34118) - ASCII with \r\n separated values
+      if (tag === 34118 && type === 2) {
+        try {
+          const bytes = new Uint8Array(arrayBuf, strOff, Math.min(count, 40000));
+          feiMeta = new TextDecoder('ascii').decode(bytes);
+        } catch(e) {}
+      }
+
+      // FEI metadata 2 (tag 34119) - often UTF-16LE encoded
+      if (tag === 34119 && type === 2) {
+        try {
+          const bytes = new Uint8Array(arrayBuf, strOff, Math.min(count, 80000));
+          // Try UTF-16LE first (common for tag 34119)
+          try {
+            feiMeta2 = new TextDecoder('utf-16le').decode(bytes);
+          } catch(e2) {
+            feiMeta2 = new TextDecoder('ascii').decode(bytes);
+          }
+        } catch(e) {}
+      }
+
+      // XResolution (tag 282) - RATIONAL
+      if (tag === 282 && type === 5) {
+        const off = g32(valOff);
+        const den = g32(off + 4);
+        if (den > 0) xRes = g32(off) / den;
+      }
+      // ResolutionUnit (tag 296)
+      if (tag === 296) resUnit = g16(valOff);
+    }
+
+    // ── Strategy 1: FEI tag 34118 — line[3] is pixel size in meters ──
+    if (feiMeta) {
+      const lines = feiMeta.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      // Line index 3 is typically pixel size in meters for FEI
+      if (lines.length > 3) {
+        const val = parseFloat(lines[3]);
+        if (!isNaN(val) && val > 0 && val < 1e-3) {
+          return { nm: val * 1e9, source: 'FEI tag 34118 (pixel size)' };
+        }
+      }
+    }
+
+    // ── Strategy 2: Search FEI text metadata for labeled pixel size ──
+    const allText = [feiMeta, feiMeta2, description].filter(Boolean).join('\n');
+    if (allText) {
+      // "Image Pixel Size = 1.245 nm" or "Pixel Size = 1.245 nm" (skip FIB/Argon ones)
+      // Look for AP_IMAGE_PIXEL_SIZE or AP_PIXEL_SIZE sections
+      let match = allText.match(/(?:Image Pixel Size|AP_IMAGE_PIXEL_SIZE)\s*=?\s*([\d.eE\-+]+)\s*(nm|um|µm|mm|m|fm)/i);
+      if (match) {
+        let val = parseFloat(match[1]);
+        const u = match[2].toLowerCase();
+        if (u === 'fm') val *= 1e-6;
+        else if (u === 'm') val *= 1e9;
+        else if (u === 'mm') val *= 1e6;
+        else if (u === 'um' || u === 'µm') val *= 1e3;
+        // nm stays as-is
+        if (!isNaN(val) && val > 0) {
+          return { nm: val, source: 'FEI metadata (Image Pixel Size)' };
+        }
+      }
+
+      // AP_PIXEL_SIZE line: the label line is followed by "Pixel Size = X.XX nm"
+      match = allText.match(/AP_PIXEL_SIZE\s*[\r\n]+(?:Pixel Size\s*=\s*)?([\d.eE\-+]+)\s*(nm|um|µm|mm|m)/i);
+      if (match) {
+        let val = parseFloat(match[1]);
+        const u = match[2].toLowerCase();
+        if (u === 'm') val *= 1e9;
+        else if (u === 'mm') val *= 1e6;
+        else if (u === 'um' || u === 'µm') val *= 1e3;
+        if (!isNaN(val) && val > 0) {
+          return { nm: val, source: 'FEI metadata (AP_PIXEL_SIZE)' };
+        }
+      }
+
+      // Generic "Pixel Size = X.XX nm" (but skip 0 values and FIB/Argon)
+      const pxMatches = [...allText.matchAll(/(?<!FIB |Argon )Pixel Size\s*=\s*([\d.eE\-+]+)\s*(nm|um|µm|mm|m)/gi)];
+      for (const m of pxMatches) {
+        let val = parseFloat(m[1]);
+        const u = m[2].toLowerCase();
+        if (u === 'm') val *= 1e9;
+        else if (u === 'mm') val *= 1e6;
+        else if (u === 'um' || u === 'µm') val *= 1e3;
+        if (!isNaN(val) && val > 0.0001) {
+          return { nm: val, source: 'TIFF metadata (Pixel Size)' };
+        }
+      }
+
+      // FEI PixelWidth= format
+      match = allText.match(/PixelWidth\s*=\s*([\d.eE\-+]+)/i);
+      if (match) {
+        const meters = parseFloat(match[1]);
+        if (!isNaN(meters) && meters > 0) {
+          return { nm: meters * 1e9, source: 'TIFF metadata (PixelWidth)' };
+        }
+      }
+
+      // Zeiss: "AP_PIXEL_SIZE = 2.34e-009" (value in meters)
+      match = allText.match(/AP_PIXEL_SIZE\s*=\s*([\d.eE\-+]+)\s*$/im);
+      if (match) {
+        const meters = parseFloat(match[1]);
+        if (!isNaN(meters) && meters > 0 && meters < 1e-3) {
+          return { nm: meters * 1e9, source: 'TIFF metadata (AP_PIXEL_SIZE meters)' };
+        }
+      }
+
+      // JEOL: "PixelSize(nm)=5.0"
+      match = allText.match(/PixelSize\s*\(?nm\)?\s*=\s*([\d.eE\-+]+)/i);
+      if (match) {
+        const nm = parseFloat(match[1]);
+        if (!isNaN(nm) && nm > 0) {
+          return { nm, source: 'TIFF metadata (PixelSize nm)' };
+        }
+      }
+    }
+
+    // ── Strategy 3: Brute-force scan entire file as ASCII for pixel size text ──
+    try {
+      const fullText = new TextDecoder('ascii', { fatal: false }).decode(new Uint8Array(arrayBuf));
+      const pxMatches = [...fullText.matchAll(/(?:Image )?Pixel Size\s*=\s*([\d.]+)\s*(nm|um|µm|mm)/gi)];
+      for (const m of pxMatches) {
+        let val = parseFloat(m[1]);
+        const u = m[2].toLowerCase();
+        if (u === 'mm') val *= 1e6;
+        else if (u === 'um' || u === 'µm') val *= 1e3;
+        if (!isNaN(val) && val > 0.0001) {
+          return { nm: val, source: 'TIFF embedded text (Pixel Size)' };
+        }
+      }
+    } catch(e) {}
+
+    // ── Strategy 4: TIFF resolution tags (least reliable for SEM) ──
+    if (xRes && xRes > 1) {
+      let pxPerM;
+      if (resUnit === 3) pxPerM = xRes * 100;
+      else if (resUnit === 2) pxPerM = xRes / 0.0254;
+      else return null;
+      const nm = 1e9 / pxPerM;
+      if (nm > 0 && nm < 1e6) {
+        return { nm, source: 'TIFF resolution tags' };
+      }
+    }
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
+// ─── SSC file parsing ───
+function parseSSC(text) {
+  // AutoSEM / SEM .ssc files often store the true calibration in Step Size.
+  // Some files are Windows-1252 encoded, so normalise micro symbols first.
+  const normText = normalizeMicronText(text);
+  const results = {};
+  const lines = normText.split(/\r?\n/);
+
+  const setPixelSize = (nm, source) => {
+    if (!isNaN(nm) && isFinite(nm) && nm > 0) {
+      results.pixelSize = nm;
+      results.source = source;
+    }
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    let m = line.match(/^Bitmap\s*=\s*(.+)$/i);
+    if (m) {
+      results.bitmapName = m[1].trim();
+      results.bitmapBase = normalizeBaseName(results.bitmapName);
+      continue;
+    }
+
+    // Highest priority: Step Size (e.g. Step Size=0.0025µm)
+    m = line.match(/step\s*size\s*[:=]\s*([\d.eE\-+]+)\s*(nm|um|µm|mm|m)/i);
+    if (m) {
+      setPixelSize(unitTokenToNm(parseFloat(m[1]), m[2]), 'Step Size');
+      continue;
+    }
+
+    // XStep / YStep variants
+    m = line.match(/(xstep|ystep)\s*[:=]\s*([\d.eE\-+]+)\s*(nm|um|µm|mm|m)/i);
+    if (m) {
+      setPixelSize(unitTokenToNm(parseFloat(m[2]), m[3]), m[1]);
+      continue;
+    }
+
+    // PixelSize fallback
+    m = line.match(/pixel\s*size\s*[:=]\s*([\d.eE\-+]+)\s*(nm|um|µm|mm|m)?/i);
+    if (m && !results.pixelSize) {
+      setPixelSize(unitTokenToNm(parseFloat(m[1]), m[2] || 'nm'), 'PixelSize');
+      continue;
+    }
+
+    // Resolution fallback
+    m = line.match(/resolution\s*[:=]\s*([\d.eE\-+]+)\s*(nm|um|µm|mm|m)?/i);
+    if (m && !results.pixelSize) {
+      setPixelSize(unitTokenToNm(parseFloat(m[1]), m[2] || 'nm'), 'Resolution');
+      continue;
+    }
+
+    // nm/pixel fallback
+    m = line.match(/([\d.eE\-+]+)\s*nm\s*(?:\/|per)\s*(?:pixel|px)/i);
+    if (m && !results.pixelSize) {
+      setPixelSize(parseFloat(m[1]), 'nm/pixel');
+      continue;
+    }
+
+    // HFW / FoV fallback (needs image width)
+    m = line.match(/(?:HFW|FoV|Field\s*of\s*View)\s*[:=]\s*([\d.eE\-+]+)\s*(nm|um|µm|mm|m)/i);
+    if (m) {
+      results.hfw_nm = unitTokenToNm(parseFloat(m[1]), m[2]);
+      results.hfwSource = `${m[0].split(/[=:]/)[0].trim()} = ${m[1]} ${m[2]}`;
+      continue;
+    }
+
+    m = line.match(/image\s*(?:width|x)\s*[:=]\s*(\d+)/i);
+    if (m) {
+      results.imgWidth = parseInt(m[1], 10);
+      continue;
+    }
+  }
+
+  if (!results.pixelSize && results.hfw_nm && results.imgWidth) {
+    results.pixelSize = results.hfw_nm / results.imgWidth;
+    results.source = `Computed from ${results.hfwSource} / ${results.imgWidth}px`;
+  }
+
+  return results;
+}
+
+// ─── TIFF decoder for browsers that don't support TIFF natively ───
+function decodeTIFF(arrayBuf) {
+  const view = new DataView(arrayBuf);
+  const le = view.getUint16(0) === 0x4949;
+  if (view.getUint16(0) !== 0x4949 && view.getUint16(0) !== 0x4D4D) return null;
+  if (view.getUint16(2, le) !== 42) return null;
+
+  const g16 = (o) => view.getUint16(o, le);
+  const g32 = (o) => view.getUint32(o, le);
+
+  const ifdOff = g32(4);
+  const nEntries = g16(ifdOff);
+
+  // Read IFD tags
+  const tags = {};
+  for (let i = 0; i < nEntries; i++) {
+    const off = ifdOff + 2 + i * 12;
+    const tag = g16(off);
+    const type = g16(off + 2);
+    const count = g32(off + 4);
+    const valOff = off + 8;
+
+    // Read value(s)
+    if (type === 3 && count === 1) {       // SHORT single
+      tags[tag] = g16(valOff);
+    } else if (type === 4 && count === 1) { // LONG single
+      tags[tag] = g32(valOff);
+    } else if (type === 3 && count <= 2) {  // SHORT x2
+      tags[tag] = [];
+      for (let j = 0; j < count; j++) tags[tag].push(g16(valOff + j * 2));
+    } else if (type === 3 && count > 2) {   // SHORT array → offset
+      const ptr = g32(valOff);
+      tags[tag] = [];
+      for (let j = 0; j < count; j++) tags[tag].push(g16(ptr + j * 2));
+    } else if (type === 4 && count > 1) {   // LONG array → offset
+      const ptr = g32(valOff);
+      tags[tag] = [];
+      for (let j = 0; j < count; j++) tags[tag].push(g32(ptr + j * 4));
+    } else if (type === 5 && count === 1) { // RATIONAL
+      const ptr = g32(valOff);
+      tags[tag] = g32(ptr) / g32(ptr + 4);
+    } else if (type === 1 && count <= 4) {  // BYTE
+      tags[tag] = new Uint8Array(arrayBuf, valOff, count);
+    } else {
+      // Store offset for large values
+      tags[tag] = { type, count, offset: count > 4 ? g32(valOff) : valOff };
+    }
+  }
+
+  const width = tags[256] || 0;           // ImageWidth
+  const height = tags[257] || 0;          // ImageLength
+  const bps = tags[258];                  // BitsPerSample
+  const compression = tags[259] || 1;     // Compression
+  const photometric = tags[262] || 0;     // PhotometricInterpretation
+  const stripOffsets = tags[273];         // StripOffsets
+  const samplesPerPx = tags[277] || 1;    // SamplesPerPixel
+  const rowsPerStrip = tags[278] || height; // RowsPerStrip
+  const stripByteCounts = tags[279];      // StripByteCounts
+  const colorMapTag = tags[320];          // ColorMap (for palette images)
+
+  if (!width || !height) return null;
+  if (compression !== 1) {
+    console.warn('TIFF compression type', compression, 'not supported (only uncompressed)');
+    return null;
+  }
+
+  // Read color map for palette images (photometric=3)
+  let colorMap = null;
+  if (photometric === 3 && colorMapTag) {
+    colorMap = new Array(256);
+    let cmOff, cmCount;
+    if (typeof colorMapTag === 'object' && colorMapTag.offset !== undefined) {
+      cmOff = colorMapTag.offset;
+      cmCount = colorMapTag.count;
+    } else if (Array.isArray(colorMapTag)) {
+      // Already parsed as array
+      for (let i = 0; i < 256; i++) {
+        colorMap[i] = [
+          (colorMapTag[i] || 0) >> 8,
+          (colorMapTag[i + 256] || 0) >> 8,
+          (colorMapTag[i + 512] || 0) >> 8
+        ];
+      }
+      cmOff = null;
+    }
+    if (cmOff != null) {
+      for (let i = 0; i < 256; i++) {
+        colorMap[i] = [
+          g16(cmOff + i * 2) >> 8,            // R
+          g16(cmOff + (i + 256) * 2) >> 8,    // G
+          g16(cmOff + (i + 512) * 2) >> 8     // B
+        ];
+      }
+    }
+  }
+
+  // Determine bits per sample
+  let bitsPerSample = 8;
+  if (Array.isArray(bps)) bitsPerSample = bps[0];
+  else if (typeof bps === 'number') bitsPerSample = bps;
+
+  // Get strip data
+  let offsets = Array.isArray(stripOffsets) ? stripOffsets : [stripOffsets];
+  let byteCounts = Array.isArray(stripByteCounts) ? stripByteCounts : [stripByteCounts];
+
+  // If stripByteCounts is an object (large array), read it
+  if (typeof stripByteCounts === 'object' && stripByteCounts.offset !== undefined) {
+    const ptr = stripByteCounts.offset;
+    const cnt = stripByteCounts.count;
+    byteCounts = [];
+    for (let i = 0; i < cnt; i++) {
+      byteCounts.push(stripByteCounts.type === 3 ? g16(ptr + i * 2) : g32(ptr + i * 4));
+    }
+  }
+  if (typeof stripOffsets === 'object' && stripOffsets.offset !== undefined) {
+    const ptr = stripOffsets.offset;
+    const cnt = stripOffsets.count;
+    offsets = [];
+    for (let i = 0; i < cnt; i++) {
+      offsets.push(stripOffsets.type === 3 ? g16(ptr + i * 2) : g32(ptr + i * 4));
+    }
+  }
+
+  // Create output canvas
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.createImageData(width, height);
+  const out = imgData.data;
+
+  // Read pixel data strip by strip
+  let outRow = 0;
+  for (let s = 0; s < offsets.length; s++) {
+    const stripOff = offsets[s];
+    const stripRows = Math.min(rowsPerStrip, height - outRow);
+
+    for (let r = 0; r < stripRows; r++) {
+      const y = outRow + r;
+      for (let x = 0; x < width; x++) {
+        const outIdx = (y * width + x) * 4;
+
+        if (photometric === 3 && colorMap && samplesPerPx === 1) {
+          // Palette color: look up index in color map
+          const idx = view.getUint8(stripOff + r * width + x);
+          const c = colorMap[idx] || [0, 0, 0];
+          out[outIdx]     = c[0];
+          out[outIdx + 1] = c[1];
+          out[outIdx + 2] = c[2];
+          out[outIdx + 3] = 255;
+        } else if (samplesPerPx >= 3) {
+          // RGB
+          if (bitsPerSample === 8) {
+            const px = stripOff + (r * width + x) * samplesPerPx;
+            out[outIdx]     = view.getUint8(px);
+            out[outIdx + 1] = view.getUint8(px + 1);
+            out[outIdx + 2] = view.getUint8(px + 2);
+            out[outIdx + 3] = samplesPerPx >= 4 ? view.getUint8(px + 3) : 255;
+          } else if (bitsPerSample === 16) {
+            const px = stripOff + (r * width + x) * samplesPerPx * 2;
+            out[outIdx]     = g16(px) >> 8;
+            out[outIdx + 1] = g16(px + 2) >> 8;
+            out[outIdx + 2] = g16(px + 4) >> 8;
+            out[outIdx + 3] = 255;
+          }
+        } else {
+          // Grayscale
+          let val;
+          if (bitsPerSample === 8) {
+            val = view.getUint8(stripOff + r * width + x);
+          } else if (bitsPerSample === 16) {
+            val = g16(stripOff + (r * width + x) * 2) >> 8;
+          } else if (bitsPerSample === 32) {
+            // 32-bit float (common in some SEM/scientific TIFF)
+            const fOff = stripOff + (r * width + x) * 4;
+            const fVal = view.getFloat32(fOff, le);
+            val = Math.max(0, Math.min(255, Math.round(fVal * 255)));
+          } else {
+            val = 128;
+          }
+
+          // MinIsWhite: invert
+          if (photometric === 0) val = 255 - val;
+
+          out[outIdx]     = val;
+          out[outIdx + 1] = val;
+          out[outIdx + 2] = val;
+          out[outIdx + 3] = 255;
+        }
+      }
+    }
+    outRow += stripRows;
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+  return canvas;
+}
+
+// ─── Image loading ───
+async function addFiles(fileList) {
+  const imgExts = /\.(png|jpe?g|gif|bmp|tiff?|webp|svg)$/i;
+  const mimeMap = {
+    '.bmp': 'image/bmp', '.png': 'image/png', '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.tif': 'image/tiff',
+    '.tiff': 'image/tiff', '.webp': 'image/webp', '.svg': 'image/svg+xml'
+  };
+  let added = 0;
+  for (const file of fileList) {
+    if (file.name.toLowerCase().endsWith('.ssc')) {
+      handleSSCFile(file);
+      continue;
+    }
+    // Accept if MIME starts with image/ OR if extension matches common image formats
+    const isImage = (file.type && file.type.startsWith('image/')) || imgExts.test(file.name);
+    if (!isImage) continue;
+
+    const entry = { file, name: file.name, pixelSize: null, pixelSource: 'manual' };
+
+    // Read file into ArrayBuffer for metadata + reliable blob creation
+    let buf;
+    try {
+      buf = await file.arrayBuffer();
+    } catch(e) {
+      toast(`Could not read: ${file.name}`);
+      continue;
+    }
+
+    // Try reading TIFF metadata
+    try {
+      const meta = tryExtractPixelSize(buf);
+      if (meta) {
+        entry.pixelSize = meta.nm;
+        entry.pixelSource = meta.source;
+      }
+    } catch(e) { /* non-fatal */ }
+
+    // Determine correct MIME type
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    const mime = file.type || mimeMap[ext] || 'image/bmp';
+    const isTiff = ext === '.tif' || ext === '.tiff' || mime === 'image/tiff';
+
+    const img = new Image();
+    let loaded = false;
+
+    // For TIFF files: try JS decoder first (browsers don't support TIFF in <img>)
+    if (isTiff) {
+      try {
+        const tiffCanvas = decodeTIFF(buf);
+        if (tiffCanvas) {
+          await new Promise((res, rej) => {
+            img.onload = res;
+            img.onerror = rej;
+            img.src = tiffCanvas.toDataURL('image/png');
+          });
+          loaded = true;
+        }
+      } catch(e) {
+        console.warn('TIFF decoder failed:', e);
+      }
+    }
+
+    // For non-TIFF or if TIFF decoder failed: standard loading chain
+    if (!loaded) {
+      const typedBlob = new Blob([buf], { type: mime });
+
+      // Try object URL
+      const objUrl = URL.createObjectURL(typedBlob);
+      try {
+        await new Promise((res, rej) => {
+          img.onload = res;
+          img.onerror = rej;
+          img.src = objUrl;
+        });
+        loaded = true;
+      } catch(e) {
+        URL.revokeObjectURL(objUrl);
+      }
+
+      // Fallback: data URL
+      if (!loaded) {
+        try {
+          const dataUrl = await new Promise((res, rej) => {
+            const reader = new FileReader();
+            reader.onload = () => res(reader.result);
+            reader.onerror = rej;
+            reader.readAsDataURL(typedBlob);
+          });
+          await new Promise((res, rej) => {
+            img.onload = res;
+            img.onerror = rej;
+            img.src = dataUrl;
+          });
+          loaded = true;
+        } catch(e) { /* still failed */ }
+      }
+
+      // Fallback 2: createImageBitmap
+      if (!loaded) {
+        try {
+          const bitmap = await createImageBitmap(typedBlob);
+          const tmpC = document.createElement('canvas');
+          tmpC.width = bitmap.width;
+          tmpC.height = bitmap.height;
+          tmpC.getContext('2d').drawImage(bitmap, 0, 0);
+          await new Promise((res, rej) => {
+            img.onload = res;
+            img.onerror = rej;
+            img.src = tmpC.toDataURL('image/png');
+          });
+          bitmap.close();
+          loaded = true;
+        } catch(e) { /* still failed */ }
+      }
+    }
+
+    if (!loaded) {
+      toast(`Could not load: ${file.name}`);
+      continue;
+    }
+
+    entry.img = img;
+    entry.w = img.naturalWidth;
+    entry.h = img.naturalHeight;
+
+    if (!entry.pixelSize) {
+      entry.pixelSize = null;
+    }
+
+    state.images.push(entry);
+    added++;
+  }
+
+  if (added > 0) toast(`Added ${added} image${added > 1 ? 's' : ''}`);
+  applySSCToImages();
+  renderThumbs();
+  if (state.images.length > 0 && state.activeIdx === -1) {
+    selectImage(0);
+  } else if (state.activeIdx >= 0) {
+    renderPreview();
+  }
+  $('btnBatchSave').disabled = state.images.length === 0;
+  $('btnSaveCurrent').disabled = state.images.length === 0;
+}
+
+function applySSCToImages() {
+  let matched = 0;
+  state.images.forEach(entry => {
+    const key = normalizeBaseName(entry.name);
+    const parsed = state.sscMap[key];
+    if (parsed && parsed.pixelSize) {
+      entry.pixelSize = parsed.pixelSize;
+      entry.pixelSource = `.ssc (${parsed.source})`;
+      matched++;
+    }
+  });
+
+  renderThumbs();
+  if (state.activeIdx >= 0) {
+    const active = state.images[state.activeIdx];
+    if (active && active.pixelSize != null) {
+      $('inputPixelSize').value = active.pixelSize;
+      updatePixelStatus('auto', active.pixelSource || '.ssc file');
+    }
+    renderPreview();
+  }
+  return matched;
+}
+
+function handleSSCFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = normalizeMicronText(reader.result || '');
+    const parsed = parseSSC(text);
+
+    // Store by SSC basename and, when present, by linked bitmap basename.
+    const sscBase = normalizeBaseName(file.name);
+    state.sscMap[sscBase] = parsed;
+    if (parsed.bitmapBase) state.sscMap[parsed.bitmapBase] = parsed;
+
+    const matched = applySSCToImages();
+
+    $('sscContent').textContent = text.substring(0, 2000);
+    if (parsed.pixelSize) {
+      $('sscPixelVal').value = parsed.pixelSize.toFixed(6);
+      toast(matched > 0
+        ? `Loaded ${file.name} → matched ${matched} image${matched > 1 ? 's' : ''}`
+        : `Loaded ${file.name} (${parsed.source}: ${parsed.pixelSize.toFixed(6)} nm/px)`);
+    } else {
+      toast(`Loaded ${file.name}, but no pixel size was found`);
+    }
+    $('sscModal').classList.add('visible');
+  };
+  reader.readAsText(file, 'windows-1252');
+}
+
+// ─── Thumbnail rendering ───
+function renderThumbs() {
+  if (state.images.length === 0) {
+    thumbStrip.innerHTML = '<div style="text-align:center;padding:20px 0;color:var(--text-muted);font-size:12px;">No images loaded</div>';
+    return;
+  }
+  thumbStrip.innerHTML = '';
+  state.images.forEach((entry, i) => {
+    const div = document.createElement('div');
+    div.className = 'thumb-item' + (i === state.activeIdx ? ' active' : '');
+    const pxLabel = entry.pixelSize ? `${entry.pixelSize.toFixed(2)} nm/px` : 'manual';
+    div.innerHTML = `
+      <img class="thumb-img" src="${entry.img.src}">
+      <div class="thumb-info">
+        <div class="thumb-name">${entry.name}</div>
+        <div class="thumb-dim">${entry.w}×${entry.h} · ${pxLabel}</div>
+      </div>
+      <button class="thumb-remove" data-idx="${i}">×</button>
+    `;
+    div.addEventListener('click', (e) => {
+      if (e.target.closest('.thumb-remove')) return;
+      selectImage(i);
+    });
+    thumbStrip.appendChild(div);
+  });
+
+  // Remove handlers
+  thumbStrip.querySelectorAll('.thumb-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.idx);
+      state.images.splice(idx, 1);
+      if (state.activeIdx >= state.images.length) state.activeIdx = state.images.length - 1;
+      if (state.images.length === 0) {
+        state.activeIdx = -1;
+        dropZone.classList.remove('hidden');
+        canvasWrapper.classList.remove('visible');
+        bottomBar.classList.remove('visible');
+      } else {
+        selectImage(state.activeIdx);
+      }
+      renderThumbs();
+      $('btnBatchSave').disabled = state.images.length === 0;
+  $('btnSaveCurrent').disabled = state.images.length === 0;
+    });
+  });
+}
+
+// ─── Image selection ───
+function selectImage(idx) {
+  state.activeIdx = idx;
+  const entry = state.images[idx];
+  if (!entry) return;
+
+  dropZone.classList.add('hidden');
+  canvasWrapper.classList.add('visible');
+  bottomBar.classList.add('visible');
+
+  // Set pixel size control
+  if (entry.pixelSize != null) {
+    $('inputPixelSize').value = entry.pixelSize;
+    updatePixelStatus('auto', entry.pixelSource);
+  } else {
+    updatePixelStatus('manual', 'Enter manually');
+  }
+
+  renderThumbs();
+  renderPreview();
+}
+
+function updatePixelStatus(mode, text) {
+  const box = $('pixelStatusBox');
+  if (!text) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="pixel-status ${mode}"><div class="pixel-dot"></div>${text}</div>`;
+}
+
+// ─── Preview rendering ───
+function getScaleBarPixels() {
+  const entry = state.images[state.activeIdx];
+  if (!entry) return 100;
+  const pxSize = ctrl.pixelSize; // nm per pixel
+  const desiredNm = unitToNm(ctrl.scaleLen, ctrl.unit);
+  return desiredNm / pxSize;
+}
+
+function renderPreview() {
+  const entry = state.images[state.activeIdx];
+  if (!entry) return;
+
+  // Draw image on canvas at native resolution for quality
+  canvas.width = entry.w;
+  canvas.height = entry.h;
+  ctx.drawImage(entry.img, 0, 0);
+
+  // Compute display scale
+  const container = canvasContainer;
+  const displayW = canvas.clientWidth;
+  const displayH = canvas.clientHeight;
+  const scaleX = displayW / entry.w;
+  const scaleY = displayH / entry.h;
+
+  // Update overlay
+  updateOverlay();
+
+  $('statusDims').textContent = `${entry.w} × ${entry.h} px`;
+  $('statusInfo').textContent = `Pixel size: ${ctrl.pixelSize} nm/px · Scale bar: ${ctrl.scaleLen} ${ctrl.unit}`;
+}
+
+function updateOverlay() {
+  const entry = state.images[state.activeIdx];
+  if (!entry) return;
+
+  const barPxNative = getScaleBarPixels();
+  const displayW = canvas.clientWidth;
+  const displayH = canvas.clientHeight;
+  const scale = displayW / entry.w;
+
+  const barPxDisplay = barPxNative * scale;
+  const thickDisplay = ctrl.thickness * scale;
+  const fontDisplay = ctrl.fontSize * scale;
+  const marginDisplay = ctrl.margin * scale;
+  const padDisplay = ctrl.bgPad * scale;
+  const capH = ctrl.endCaps ? ctrl.thickness * 3 * scale : 0;
+
+  const label = formatScaleLabel(ctrl.scaleLen, ctrl.unit);
+
+  // Build overlay content
+  const bgDiv = overlay.querySelector('.sb-bg');
+  const lineDiv = overlay.querySelector('.sb-line');
+  const textDiv = overlay.querySelector('.sb-text');
+
+  // Background
+  let bgColor = 'transparent';
+  if (ctrl.bgStyle === 'dark') bgColor = 'rgba(0,0,0,0.55)';
+  else if (ctrl.bgStyle === 'light') bgColor = 'rgba(255,255,255,0.55)';
+  else if (ctrl.bgStyle === 'solid-black') bgColor = '#000';
+  else if (ctrl.bgStyle === 'solid-white') bgColor = '#fff';
+  bgDiv.style.background = bgColor;
+  bgDiv.style.padding = padDisplay + 'px';
+  bgDiv.style.borderRadius = (4 * scale) + 'px';
+
+  // Line
+  lineDiv.style.width = barPxDisplay + 'px';
+  lineDiv.style.height = thickDisplay + 'px';
+  lineDiv.style.background = ctrl.barColor;
+  lineDiv.style.borderRadius = '0';
+  lineDiv.style.position = 'relative';
+
+  // End caps
+  if (ctrl.endCaps) {
+    lineDiv.style.boxShadow = 'none';
+    lineDiv.innerHTML = `
+      <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:${Math.max(thickDisplay * 0.4, 1.5)}px;height:${capH}px;background:${ctrl.barColor};border-radius:1px;"></div>
+      <div style="position:absolute;right:0;top:50%;transform:translateY(-50%);width:${Math.max(thickDisplay * 0.4, 1.5)}px;height:${capH}px;background:${ctrl.barColor};border-radius:1px;"></div>
+    `;
+  } else {
+    lineDiv.innerHTML = '';
+  }
+
+  // Text
+  textDiv.style.color = ctrl.textColor;
+  textDiv.style.fontSize = fontDisplay + 'px';
+  textDiv.style.fontFamily = ctrl.font;
+  textDiv.style.display = ctrl.showText ? 'block' : 'none';
+  textDiv.textContent = label;
+  textDiv.style.marginTop = (2 * scale) + 'px';
+
+  // Position
+  const totalW = barPxDisplay + padDisplay * 2;
+  const totalH = thickDisplay + (ctrl.showText ? fontDisplay * 1.4 : 0) + padDisplay * 2;
+
+  let posX, posY;
+  const pos = ctrl.position;
+
+  // Use global fractional position for free drag (applies to all images)
+  if (pos === 'free' && state.sbFracX != null) {
+    posX = state.sbFracX * displayW;
+    posY = state.sbFracY * displayH;
+    // Clamp so it stays on screen
+    posX = Math.max(0, Math.min(posX, displayW - totalW));
+    posY = Math.max(0, Math.min(posY, displayH - totalH));
+  } else if (pos === 'bottom-right') {
+    posX = displayW - totalW - marginDisplay;
+    posY = displayH - totalH - marginDisplay;
+  } else if (pos === 'bottom-left') {
+    posX = marginDisplay;
+    posY = displayH - totalH - marginDisplay;
+  } else if (pos === 'top-right') {
+    posX = displayW - totalW - marginDisplay;
+    posY = marginDisplay;
+  } else if (pos === 'top-left') {
+    posX = marginDisplay;
+    posY = marginDisplay;
+  } else if (pos === 'bottom-center') {
+    posX = (displayW - totalW) / 2;
+    posY = displayH - totalH - marginDisplay;
+  } else {
+    // free with no saved position - default bottom-right
+    posX = displayW - totalW - marginDisplay;
+    posY = displayH - totalH - marginDisplay;
+  }
+
+  overlay.style.left = posX + 'px';
+  overlay.style.top = posY + 'px';
+
+  overlay.style.display = 'block';
+}
+
+// ─── Drag scale bar ───
+let dragging = false, dragStartX, dragStartY, overlayStartX, overlayStartY;
+
+overlay.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  dragging = true;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  overlayStartX = parseInt(overlay.style.left) || 0;
+  overlayStartY = parseInt(overlay.style.top) || 0;
+  // Switch to free
+  $('inputPosition').value = 'free';
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!dragging) return;
+  const dx = e.clientX - dragStartX;
+  const dy = e.clientY - dragStartY;
+  let nx = overlayStartX + dx;
+  let ny = overlayStartY + dy;
+  // Clamp
+  const cw = canvas.clientWidth;
+  const ch = canvas.clientHeight;
+  nx = Math.max(0, Math.min(nx, cw - overlay.offsetWidth));
+  ny = Math.max(0, Math.min(ny, ch - overlay.offsetHeight));
+  overlay.style.left = nx + 'px';
+  overlay.style.top = ny + 'px';
+
+  // Store as global fraction (applies to all images)
+  state.sbFracX = nx / cw;
+  state.sbFracY = ny / ch;
+});
+
+document.addEventListener('mouseup', () => { dragging = false; });
+
+// Touch support
+overlay.addEventListener('touchstart', (e) => {
+  const t = e.touches[0];
+  dragging = true;
+  dragStartX = t.clientX;
+  dragStartY = t.clientY;
+  overlayStartX = parseInt(overlay.style.left) || 0;
+  overlayStartY = parseInt(overlay.style.top) || 0;
+  $('inputPosition').value = 'free';
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+  if (!dragging) return;
+  const t = e.touches[0];
+  const dx = t.clientX - dragStartX;
+  const dy = t.clientY - dragStartY;
+  let nx = overlayStartX + dx;
+  let ny = overlayStartY + dy;
+  const cw = canvas.clientWidth;
+  const ch = canvas.clientHeight;
+  nx = Math.max(0, Math.min(nx, cw - overlay.offsetWidth));
+  ny = Math.max(0, Math.min(ny, ch - overlay.offsetHeight));
+  overlay.style.left = nx + 'px';
+  overlay.style.top = ny + 'px';
+
+  // Store as global fraction
+  state.sbFracX = nx / cw;
+  state.sbFracY = ny / ch;
+}, { passive: true });
+
+document.addEventListener('touchend', () => { dragging = false; });
+
+// ─── Draw scale bar onto canvas (for export) ───
+function drawScaleBarOnCanvas(targetCanvas, entry) {
+  const tCtx = targetCanvas.getContext('2d');
+  targetCanvas.width = entry.w;
+  targetCanvas.height = entry.h;
+  tCtx.drawImage(entry.img, 0, 0);
+
+  const pxSize = ctrl.applyAll ? ctrl.pixelSize : (entry.pixelSize || ctrl.pixelSize);
+  const barPx = unitToNm(ctrl.scaleLen, ctrl.unit) / pxSize;
+  const thick = ctrl.thickness;
+  const margin = ctrl.margin;
+  const pad = ctrl.bgPad;
+  const label = formatScaleLabel(ctrl.scaleLen, ctrl.unit);
+
+  // Measure text
+  tCtx.font = `${ctrl.fontSize}px ${ctrl.font}`;
+  const textM = tCtx.measureText(label);
+  const textH = ctrl.showText ? ctrl.fontSize * 1.3 : 0;
+  const capH = ctrl.endCaps ? thick * 3 : 0;
+
+  const blockW = Math.max(barPx, ctrl.showText ? textM.width : 0) + pad * 2;
+  const blockH = thick + textH + pad * 2 + (ctrl.showText ? 4 : 0);
+
+  // Position (native coords)
+  let px, py;
+  const pos = ctrl.position;
+
+  if (pos === 'free' && state.sbFracX != null) {
+    px = state.sbFracX * entry.w;
+    py = state.sbFracY * entry.h;
+    // Clamp
+    px = Math.max(0, Math.min(px, entry.w - blockW));
+    py = Math.max(0, Math.min(py, entry.h - blockH));
+  } else if (pos === 'bottom-right') {
+    px = entry.w - blockW - margin;
+    py = entry.h - blockH - margin;
+  } else if (pos === 'bottom-left') {
+    px = margin;
+    py = entry.h - blockH - margin;
+  } else if (pos === 'top-right') {
+    px = entry.w - blockW - margin;
+    py = margin;
+  } else if (pos === 'top-left') {
+    px = margin;
+    py = margin;
+  } else if (pos === 'bottom-center') {
+    px = (entry.w - blockW) / 2;
+    py = entry.h - blockH - margin;
+  } else {
+    px = entry.w - blockW - margin;
+    py = entry.h - blockH - margin;
+  }
+
+  // Background
+  let bgColor = null;
+  if (ctrl.bgStyle === 'dark') bgColor = 'rgba(0,0,0,0.55)';
+  else if (ctrl.bgStyle === 'light') bgColor = 'rgba(255,255,255,0.55)';
+  else if (ctrl.bgStyle === 'solid-black') bgColor = '#000';
+  else if (ctrl.bgStyle === 'solid-white') bgColor = '#fff';
+
+  if (bgColor) {
+    tCtx.fillStyle = bgColor;
+    tCtx.beginPath();
+    roundRect(tCtx, px, py, blockW, blockH, 4);
+    tCtx.fill();
+  }
+
+  // Bar
+  const barX = px + pad;
+  const barY = py + pad;
+  tCtx.fillStyle = ctrl.barColor;
+  tCtx.fillRect(barX, barY, barPx, thick);
+
+  // End caps
+  if (ctrl.endCaps) {
+    const capW = Math.max(thick * 0.4, 2);
+    tCtx.fillRect(barX, barY + thick / 2 - capH / 2, capW, capH);
+    tCtx.fillRect(barX + barPx - capW, barY + thick / 2 - capH / 2, capW, capH);
+  }
+
+  // Text
+  if (ctrl.showText) {
+    tCtx.fillStyle = ctrl.textColor;
+    tCtx.font = `600 ${ctrl.fontSize}px ${ctrl.font}`;
+    tCtx.textAlign = 'center';
+    tCtx.textBaseline = 'top';
+    tCtx.fillText(label, barX + barPx / 2, barY + thick + 4);
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+}
+
+// ─── Save single ───
+// ─── BMP encoder ───
+function canvasToBMP(canvas) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const px = imgData.data;
+
+  const rowBytes = w * 3;
+  const rowPad = (4 - (rowBytes % 4)) % 4;
+  const rowStride = rowBytes + rowPad;
+  const pixelDataSize = rowStride * h;
+  const headerSize = 54;
+  const fileSize = headerSize + pixelDataSize;
+
+  const buf = new ArrayBuffer(fileSize);
+  const view = new DataView(buf);
+
+  // BMP File Header (14 bytes)
+  view.setUint8(0, 0x42); view.setUint8(1, 0x4D); // 'BM'
+  view.setUint32(2, fileSize, true);
+  view.setUint32(6, 0, true);       // reserved
+  view.setUint32(10, headerSize, true); // pixel data offset
+
+  // DIB Header - BITMAPINFOHEADER (40 bytes)
+  view.setUint32(14, 40, true);     // header size
+  view.setInt32(18, w, true);       // width
+  view.setInt32(22, h, true);       // height (positive = bottom-up)
+  view.setUint16(26, 1, true);      // color planes
+  view.setUint16(28, 24, true);     // bits per pixel
+  view.setUint32(30, 0, true);      // compression (0=none)
+  view.setUint32(34, pixelDataSize, true);
+  view.setUint32(38, 2835, true);   // X pixels/meter (~72 DPI)
+  view.setUint32(42, 2835, true);   // Y pixels/meter
+  view.setUint32(46, 0, true);      // colors in palette
+  view.setUint32(50, 0, true);      // important colors
+
+  // Pixel data (bottom-up, BGR)
+  const data8 = new Uint8Array(buf);
+  for (let y = 0; y < h; y++) {
+    const srcRow = h - 1 - y; // BMP is bottom-up
+    const dstOff = headerSize + y * rowStride;
+    for (let x = 0; x < w; x++) {
+      const srcIdx = (srcRow * w + x) * 4;
+      const dstIdx = dstOff + x * 3;
+      data8[dstIdx]     = px[srcIdx + 2]; // B
+      data8[dstIdx + 1] = px[srcIdx + 1]; // G
+      data8[dstIdx + 2] = px[srcIdx];     // R
+    }
+    // Padding bytes stay 0
+  }
+
+  return new Blob([buf], { type: 'image/bmp' });
+}
+
+// ─── TIFF encoder (uncompressed RGB) ───
+function canvasToTIFF(canvas) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const px = imgData.data;
+
+  const stripSize = w * h * 3; // RGB, no alpha
+  const ifdEntryCount = 12;
+  const ifdSize = 2 + ifdEntryCount * 12 + 4; // count + entries + next-IFD pointer
+
+  // Layout: header(8) + IFD + strip-offsets-value(4) + strip-byte-counts-value(4)
+  //         + bits-per-sample(6) + XRes(8) + YRes(8) + pixel data
+  const ifdOffset = 8;
+  const afterIFD = ifdOffset + ifdSize;
+  const bpsOffset = afterIFD;      // 3 shorts for BitsPerSample
+  const xResOffset = bpsOffset + 6;
+  const yResOffset = xResOffset + 8;
+  const pixelOffset = yResOffset + 8;
+  const fileSize = pixelOffset + stripSize;
+
+  const buf = new ArrayBuffer(fileSize);
+  const view = new DataView(buf);
+  const u8 = new Uint8Array(buf);
+
+  // TIFF Header
+  view.setUint16(0, 0x4949, false); // 'II' little-endian
+  view.setUint16(2, 42, true);
+  view.setUint32(4, ifdOffset, true);
+
+  // IFD
+  let off = ifdOffset;
+  view.setUint16(off, ifdEntryCount, true); off += 2;
+
+  function writeIFDEntry(tag, type, count, value) {
+    view.setUint16(off, tag, true);   off += 2;
+    view.setUint16(off, type, true);  off += 2;
+    view.setUint32(off, count, true); off += 4;
+    if (type === 3 && count === 1) {   // SHORT
+      view.setUint16(off, value, true); off += 4;
+    } else {
+      view.setUint32(off, value, true); off += 4;
+    }
+  }
+
+  // Tag 256: ImageWidth
+  writeIFDEntry(256, 3, 1, w);
+  // Tag 257: ImageLength
+  writeIFDEntry(257, 3, 1, h);
+  // Tag 258: BitsPerSample (3 values → offset)
+  writeIFDEntry(258, 3, 3, bpsOffset);
+  // Tag 259: Compression (1 = no compression)
+  writeIFDEntry(259, 3, 1, 1);
+  // Tag 262: PhotometricInterpretation (2 = RGB)
+  writeIFDEntry(262, 3, 1, 2);
+  // Tag 273: StripOffsets
+  writeIFDEntry(273, 4, 1, pixelOffset);
+  // Tag 277: SamplesPerPixel
+  writeIFDEntry(277, 3, 1, 3);
+  // Tag 278: RowsPerStrip
+  writeIFDEntry(278, 3, 1, h);
+  // Tag 279: StripByteCounts
+  writeIFDEntry(279, 4, 1, stripSize);
+  // Tag 282: XResolution
+  writeIFDEntry(282, 5, 1, xResOffset);
+  // Tag 283: YResolution
+  writeIFDEntry(283, 5, 1, yResOffset);
+  // Tag 296: ResolutionUnit (2 = inch)
+  writeIFDEntry(296, 3, 1, 2);
+
+  // Next IFD offset = 0 (no more IFDs)
+  view.setUint32(off, 0, true);
+
+  // BitsPerSample values: 8, 8, 8
+  view.setUint16(bpsOffset, 8, true);
+  view.setUint16(bpsOffset + 2, 8, true);
+  view.setUint16(bpsOffset + 4, 8, true);
+
+  // XResolution: 72/1
+  view.setUint32(xResOffset, 72, true);
+  view.setUint32(xResOffset + 4, 1, true);
+  // YResolution: 72/1
+  view.setUint32(yResOffset, 72, true);
+  view.setUint32(yResOffset + 4, 1, true);
+
+  // Pixel data: RGBA → RGB
+  let p = pixelOffset;
+  for (let i = 0; i < w * h; i++) {
+    u8[p++] = px[i * 4];     // R
+    u8[p++] = px[i * 4 + 1]; // G
+    u8[p++] = px[i * 4 + 2]; // B
+  }
+
+  return new Blob([buf], { type: 'image/tiff' });
+}
+
+// ─── Generate blob for an entry ───
+function generateBlob(entry) {
+  return new Promise(resolve => {
+    const tmpCanvas = document.createElement('canvas');
+    drawScaleBarOnCanvas(tmpCanvas, entry);
+
+    const fmt = ctrl.format;
+
+    if (fmt === 'bmp') {
+      resolve(canvasToBMP(tmpCanvas));
+    } else if (fmt === 'tiff') {
+      resolve(canvasToTIFF(tmpCanvas));
+    } else {
+      const mimeMap = { png: 'image/png', jpeg: 'image/jpeg', webp: 'image/webp' };
+      const mime = mimeMap[fmt] || 'image/png';
+      const q = (fmt === 'jpeg' || fmt === 'webp') ? ctrl.quality / 100 : undefined;
+      tmpCanvas.toBlob(b => resolve(b), mime, q);
+    }
+  });
+}
+
+function getOutputFilename(entry) {
+  const baseName = entry.name.replace(/\.[^.]+$/, '');
+  const extMap = { png: 'png', jpeg: 'jpg', bmp: 'bmp', tiff: 'tif', webp: 'webp' };
+  const ext = extMap[ctrl.format] || 'png';
+  return `${baseName}${ctrl.suffix}.${ext}`;
+}
+
+// ─── Save current image (single download) ───
+async function saveCurrent() {
+  if (state.activeIdx < 0) return;
+  const entry = state.images[state.activeIdx];
+  const blob = await generateBlob(entry);
+  const filename = getOutputFilename(entry);
+  downloadBlob(blob, filename);
+  toast(`Saved: ${filename}`);
+}
+
+function downloadBlob(blob, filename) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const a = document.createElement('a');
+    a.href = reader.result;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+  reader.readAsDataURL(blob);
+}
+
+// ─── Batch save to directory ───
+async function batchSave() {
+  if (state.images.length === 0) return;
+
+  // Must call showDirectoryPicker synchronously from the click handler (user gesture)
+  let dirHandle = null;
+  let useDir = false;
+
+  if (window.showDirectoryPicker) {
+    try {
+      dirHandle = await window.showDirectoryPicker({
+        id: 'sem-scalebar-output',
+        mode: 'readwrite',
+        startIn: 'desktop'
+      });
+      useDir = true;
+    } catch (e) {
+      if (e.name === 'AbortError') return; // user cancelled picker
+      console.warn('Directory picker error:', e);
+      // Fall through to individual downloads
+    }
+  }
+
+  if (!useDir) {
+    const ok = confirm(
+      'Directory picker not available in this browser.\n\n' +
+      `${state.images.length} files will download individually.\n` +
+      'Use Chrome or Edge and open this file locally (not in an iframe) for folder save.\n\n' +
+      'Continue with individual downloads?'
+    );
+    if (!ok) return;
+  }
+
+  const bar = $('batchBar');
+  const fill = $('batchFill');
+  const lbl = $('batchLabel');
+  const cnt = $('batchCount');
+  bar.classList.add('visible');
+  fill.style.width = '0%';
+
+  let saved = 0, errors = 0;
+  const total = state.images.length;
+
+  for (let i = 0; i < total; i++) {
+    const entry = state.images[i];
+    const filename = getOutputFilename(entry);
+
+    lbl.textContent = `Saving ${filename}...`;
+    cnt.textContent = `${i + 1}/${total}`;
+    fill.style.width = `${((i + 0.5) / total) * 100}%`;
+
+    try {
+      const blob = await generateBlob(entry);
+
+      if (useDir && dirHandle) {
+        const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      } else {
+        downloadBlob(blob, filename);
+        // Longer delay between individual downloads to avoid browser blocking
+        await new Promise(r => setTimeout(r, 800));
+      }
+      saved++;
+    } catch (e) {
+      console.error(`Failed: ${filename}`, e);
+      errors++;
+    }
+
+    fill.style.width = `${((i + 1) / total) * 100}%`;
+    // Small yield to keep UI responsive
+    await new Promise(r => setTimeout(r, 20));
+  }
+
+  lbl.textContent = 'Done!';
+  const folderName = useDir ? ` → ${dirHandle.name}/` : '';
+  const msg = errors > 0
+    ? `Saved ${saved}/${total}${folderName} (${errors} failed)`
+    : `Saved ${saved} image${saved > 1 ? 's' : ''}${folderName}`;
+  toast(msg);
+  setTimeout(() => bar.classList.remove('visible'), 2500);
+}
+
+// ─── Event bindings ───
+
+// Drop zone click → file picker
+dropZone.addEventListener('click', () => fileInput.click());
+
+// ── Full-window drag & drop ──
+const dragOverlay = $('dragOverlay');
+let dragCounter = 0; // Track enter/leave nesting
+
+// Prevent browser from opening dropped files
+document.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
+document.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); });
+
+// Show overlay when files enter the window
+document.addEventListener('dragenter', (e) => {
+  e.preventDefault();
+  // Only react to external files (not internal drags like the scale bar)
+  if (!e.dataTransfer || !e.dataTransfer.types.includes('Files')) return;
+  dragCounter++;
+  dragOverlay.classList.add('visible');
+  dropZone.classList.add('drag-over');
+});
+
+document.addEventListener('dragleave', (e) => {
+  e.preventDefault();
+  dragCounter--;
+  if (dragCounter <= 0) {
+    dragCounter = 0;
+    dragOverlay.classList.remove('visible');
+    dropZone.classList.remove('drag-over');
+  }
+});
+
+// Handle the drop on the overlay
+dragOverlay.addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  dragCounter = 0;
+  dragOverlay.classList.remove('visible');
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+    addFiles(e.dataTransfer.files);
+  }
+});
+
+// Also handle drop on the initial drop zone directly
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  dragCounter = 0;
+  dragOverlay.classList.remove('visible');
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+    addFiles(e.dataTransfer.files);
+  }
+});
+
+// Handle drop on main area (when viewing images)
+const mainArea = $('mainArea');
+mainArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  dragCounter = 0;
+  dragOverlay.classList.remove('visible');
+  if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+    addFiles(e.dataTransfer.files);
+  }
+});
+
+// File input
+fileInput.addEventListener('change', () => { addFiles(fileInput.files); fileInput.value = ''; });
+$('btnAddFiles').addEventListener('click', () => fileInput.click());
+
+// SSC input
+sscInput.addEventListener('change', () => {
+  if (sscInput.files.length > 0) handleSSCFile(sscInput.files[0]);
+  sscInput.value = '';
+});
+$('btnLoadSSC').addEventListener('click', () => sscInput.click());
+
+// SSC modal
+$('sscCancel').addEventListener('click', () => $('sscModal').classList.remove('visible'));
+$('sscApply').addEventListener('click', () => {
+  const val = parseFloat($('sscPixelVal').value);
+  if (!isNaN(val) && val > 0) {
+    $('inputPixelSize').value = val;
+    updatePixelStatus('auto', 'From .ssc file');
+    // Apply to active or all
+    if (ctrl.applyAll) {
+      state.images.forEach(e => { e.pixelSize = val; e.pixelSource = '.ssc file'; });
+    } else if (state.activeIdx >= 0) {
+      state.images[state.activeIdx].pixelSize = val;
+      state.images[state.activeIdx].pixelSource = '.ssc file';
+    }
+    renderThumbs();
+    renderPreview();
+    toast(`Pixel size set to ${val.toFixed(4)} nm/px`);
+  }
+  $('sscModal').classList.remove('visible');
+});
+
+// Batch save
+$('btnBatchSave').addEventListener('click', batchSave);
+$('btnSaveCurrent').addEventListener('click', saveCurrent);
+
+// Output format → show/hide quality row
+function updateQualityVisibility() {
+  const fmt = $('outputFormat').value;
+  $('qualityRow').style.display = (fmt === 'jpeg' || fmt === 'webp') ? '' : 'none';
+}
+$('outputFormat').addEventListener('change', updateQualityVisibility);
+updateQualityVisibility(); // initial state
+
+// Quick picks
+$('quickPicks').addEventListener('click', (e) => {
+  const btn = e.target.closest('.quick-pick');
+  if (!btn) return;
+  $('inputScaleLen').value = btn.dataset.val;
+  document.querySelectorAll('.quick-pick').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPreview();
+});
+
+// Color presets
+function setupPresets(containerId, inputId) {
+  const container = $(containerId);
+  container.addEventListener('click', (e) => {
+    const preset = e.target.closest('.color-preset');
+    if (!preset) return;
+    $(inputId).value = preset.dataset.color;
+    container.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
+    preset.classList.add('active');
+    renderPreview();
+  });
+}
+setupPresets('barPresets', 'colorBar');
+setupPresets('textPresets', 'colorText');
+
+// All sidebar controls → re-render
+const allControls = [
+  'inputPixelSize', 'inputUnit', 'inputScaleLen', 'inputThickness',
+  'colorBar', 'colorText', 'inputFontSize', 'inputFont',
+  'chkShowText', 'chkEndCaps', 'inputBg', 'inputBgPad',
+  'inputPosition', 'inputMargin'
+];
+allControls.forEach(id => {
+  $(id).addEventListener('input', renderPreview);
+  $(id).addEventListener('change', renderPreview);
+});
+
+// Handle resize
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (state.activeIdx >= 0) renderPreview();
+  }, 100);
+});
+
+// Keyboard nav
+document.addEventListener('keydown', (e) => {
+  if (state.images.length === 0) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+    e.preventDefault();
+    selectImage(Math.min(state.activeIdx + 1, state.images.length - 1));
+  } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+    e.preventDefault();
+    selectImage(Math.max(state.activeIdx - 1, 0));
+  } else if (e.key === 's' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+    e.preventDefault();
+    batchSave();
+  } else if (e.key === 's' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+    e.preventDefault();
+    saveCurrent();
+  }
+});
+</script>
+</body>
+</html>
